@@ -1,0 +1,39 @@
+1) Live 点击后黑屏（00:00 / 00:00，无法播放）
+
+问题现象：进入播放页后界面有控件，但画面黑、时长为 00:00。
+原因：Live 多数是 HLS（.m3u8） 流，ExoPlayer 需要额外的 HLS 模块；缺少 media3-exoplayer-hls 时无法解析。
+解决方案：加入依赖
+
+Version Catalog：添加 androidx-media3-exoplayer-hls
+
+Gradle：implementation(libs.androidx.media3.exoplayer.hls) 或直接 implementation("androidx.media3:media3-exoplayer-hls:1.2.0")
+
+2) 传入 videoUrl 后仍黑屏（URL 被编码导致无法播放）
+
+问题现象：导航时用 URLEncoder.encode()，进入播放页仍无法加载。
+原因：URL 被 encode 后，播放器拿到的是编码字符串（含 %3A%2F%2F 等），未 decode 直接 parse 会失败。
+解决方案：播放前 URLDecoder.decode(videoUrl, UTF_8)，并用 LaunchedEffect(decodedUrl) 重新 setMediaItem。
+
+3) UnstableApi 提示一直存在（即使加了 @OptIn）
+
+问题现象：IDE 一直提示 “This declaration is opt-in… UnstableApi”。
+原因：Media3 部分 API 需要 文件级 opt-in，函数级不一定覆盖所有使用点。
+解决方案：在文件最顶部（package 之前）加：
+@file:OptIn(androidx.media3.common.util.UnstableApi::class)
+
+4) fillMaxSize / remember Unresolved reference
+
+问题现象：出现 Unresolved reference 'fillMaxSize' 或 Unresolved reference 'remember'，甚至连带 “Cannot infer type parameter”。
+原因：缺少 Compose 相关 import（扩展函数与 remember 都需要导入）。
+解决方案：补齐 import，例如：
+
+import androidx.compose.foundation.layout.fillMaxSize（或 layout.*）
+
+import androidx.compose.runtime.remember
+
+5) 本地头像放到 drawable 后，作者头像重复
+
+问题现象：3 个作者却只有 2 个头像在重复/撞车。
+原因：用 hashCode() % avatarResList.size 会发生取模碰撞，不保证唯一。
+解决方案：在列表层做 author 去重 后按顺序分配：
+distinct authors -> mapIndexed -> authorToAvatar，再把 avatarResId 传进 VideoItem()，确保同一作者稳定且更少重复（作者数 ≤ 头像数时可做到不重复）。
